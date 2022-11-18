@@ -9,6 +9,8 @@
 #include <gui/gui.h>
 #include <input/input.h>
 #include <storage/storage.h>
+#include <notification/notification.h>
+#include <notification/notification_messages.h>
 
 #include "bad_apple.h"
 #include "video_player.h"
@@ -130,12 +132,15 @@ int32_t bad_apple_main(void* p) {
     Gui* gui = furi_record_open(RECORD_GUI);
     gui_add_view_port(gui, view_port, GuiLayerFullscreen);
 
+    NotificationApp* notification = furi_record_open(RECORD_NOTIFICATION);
+
     // Frame rate: 32 FPS
     bad_apple_timer_setup(ctx, event_queue);
 
     bool is_opened = storage_file_open(ctx->video_file, VIDEO_PATH, FSAM_READ, FSOM_OPEN_EXISTING);
     if(is_opened) {
         BadAppleEvent event;
+        notification_message(notification, &sequence_display_backlight_enforce_on);
 
         bool running = true;
         LL_TIM_EnableCounter(TIM2);
@@ -158,6 +163,7 @@ int32_t bad_apple_main(void* p) {
             view_port_update(view_port);
         }
         LL_TIM_DisableCounter(TIM2);
+        notification_message(notification, &sequence_display_backlight_enforce_auto);
     }
 
     view_port_enabled_set(view_port, false);
