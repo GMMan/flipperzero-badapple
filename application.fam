@@ -5,6 +5,5 @@ App(
     entry_point="bad_apple_main",
     requires=["gui"],
     stack_size=1 * 1024,
-    fap_category="Misc",
-    fap_icon_assets="images",
+    fap_category="Misc"
 )

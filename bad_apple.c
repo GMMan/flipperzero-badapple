@@ -13,6 +13,8 @@
 #include "bad_apple.h"
 #include "video_player.h"
 
+#define TAG "badapple"
+
 typedef enum {
     BadAppleEventTypeInput,
     BadAppleEventTypeTick,
@@ -49,6 +51,7 @@ BadAppleCtx* bad_apple_ctx_alloc(void) {
     if(inst) {
         inst->storage = furi_record_open(RECORD_STORAGE);
         inst->video_file = storage_file_alloc(inst->storage);
+        inst->file_buffer_offset = sizeof(inst->file_buffer);
     }
 
     return inst;
@@ -66,7 +69,8 @@ void bad_apple_load_next_video_chunk(BadAppleCtx* inst) {
     size_t bytes_to_read = sizeof(inst->file_buffer);
     uint8_t* buf_ptr = inst->file_buffer;
     while(bytes_to_read > 0) {
-        uint16_t curr_bytes_to_read = bytes_to_read > UINT16_MAX ? UINT16_MAX : bytes_to_read;
+        uint16_t curr_bytes_to_read = bytes_to_read > (UINT16_MAX / 2 + 1) ? (UINT16_MAX / 2 + 1) :
+                                                                             bytes_to_read;
         uint16_t read = storage_file_read(inst->video_file, buf_ptr, curr_bytes_to_read);
         bytes_to_read -= read;
         buf_ptr += read;
@@ -85,7 +89,8 @@ uint8_t bad_apple_read_byte(BadAppleCtx* inst) {
 void bad_apple_timer_isr(void* ctx) {
     FuriMessageQueue* event_queue = ctx;
     BadAppleEvent event = {.type = BadAppleEventTypeTick};
-    furi_message_queue_put(event_queue, &event, 30 * portTICK_PERIOD_MS);
+    furi_message_queue_put(event_queue, &event, 0);
+    LL_TIM_ClearFlag_UPDATE(TIM2);
 }
 
 void bad_apple_timer_setup(BadAppleCtx* inst, void* ctx) {
@@ -101,8 +106,8 @@ void bad_apple_timer_setup(BadAppleCtx* inst, void* ctx) {
     LL_TIM_SetClockSource(TIM2, LL_TIM_CLOCKSOURCE_INTERNAL);
     LL_TIM_DisableCounter(TIM2);
     LL_TIM_SetCounter(TIM2, 0);
-    LL_TIM_EnableIT_UPDATE(TIM2);
     furi_hal_interrupt_set_isr(FuriHalInterruptIdTIM2, bad_apple_timer_isr, ctx);
+    LL_TIM_EnableIT_UPDATE(TIM2);
 }
 
 void bad_apple_timer_deinit(void) {
@@ -114,11 +119,11 @@ void bad_apple_timer_deinit(void) {
 int32_t bad_apple_main(void* p) {
     UNUSED(p);
     BadAppleCtx* ctx = bad_apple_ctx_alloc();
-    FuriMessageQueue* event_queue = furi_message_queue_alloc(8, sizeof(InputEvent));
+    FuriMessageQueue* event_queue = furi_message_queue_alloc(8, sizeof(BadAppleEvent));
 
     // Configure view port
     ViewPort* view_port = view_port_alloc();
-    view_port_draw_callback_set(view_port, app_draw_callback, view_port);
+    view_port_draw_callback_set(view_port, app_draw_callback, ctx);
     view_port_input_callback_set(view_port, app_input_callback, event_queue);
 
     // Register view port in GUI
@@ -144,6 +149,7 @@ int32_t bad_apple_main(void* p) {
                         }
                     }
                 } else if(event.type == BadAppleEventTypeTick) {
+                    // FURI_LOG_D(TAG, "Update frame");
                     if(!vp_play_frame(ctx)) {
                         running = false;
                     }

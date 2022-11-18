@@ -1,14 +1,21 @@
 #include <stdbool.h>
 
+#include <furi.h>
+
 #include "bad_apple.h"
 #include "video_player.h"
+
+#define TAG "video_player"
 
 static void vp_decode_rle(BadAppleCtx* ctx);
 static void vp_decode_delta(BadAppleCtx* ctx);
 
 int vp_play_frame(BadAppleCtx* ctx) {
     // Check frame type
-    switch(bad_apple_read_byte(ctx)) {
+    // FURI_LOG_D(TAG, "Buffer offset: %04lx", ctx->file_buffer_offset);
+    uint8_t b = bad_apple_read_byte(ctx);
+    // FURI_LOG_D(TAG, "Frame byte: %02x", b);
+    switch(b) {
     case 1: // PFrame (delta)
         vp_decode_delta(ctx);
         break;
@@ -38,7 +45,7 @@ static inline void vp_write_pixel(BadAppleCtx* ctx, bool color) {
 }
 
 static inline void vp_set_rect_fast(BadAppleCtx* ctx, int x, int y) {
-    ctx->frame_write_offset = y * VIDEO_HEIGHT + x;
+    ctx->frame_write_offset = y * VIDEO_WIDTH + x;
 }
 
 static void vp_decode_rle(BadAppleCtx* ctx) {
