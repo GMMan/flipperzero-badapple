@@ -114,8 +114,9 @@ void bad_apple_timer_setup(BadAppleCtx* inst, void* ctx) {
 
 void bad_apple_timer_deinit(void) {
     LL_TIM_DisableCounter(TIM2);
-    LL_TIM_DeInit(TIM2);
+    LL_TIM_DisableIT_UPDATE(TIM2);
     furi_hal_interrupt_set_isr(FuriHalInterruptIdTIM2, NULL, NULL);
+    LL_TIM_DeInit(TIM2);
 }
 
 int32_t bad_apple_main(void* p) {
