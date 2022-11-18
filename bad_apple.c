@@ -164,7 +164,10 @@ int32_t bad_apple_main(void* p) {
         }
         LL_TIM_DisableCounter(TIM2);
         notification_message(notification, &sequence_display_backlight_enforce_auto);
+        storage_file_close(ctx->video_file);
     }
+
+    furi_record_close(RECORD_NOTIFICATION);
 
     view_port_enabled_set(view_port, false);
     gui_remove_view_port(gui, view_port);
